@@ -1,0 +1,124 @@
+<html>
+    <head>
+        <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+        <title>Chlu Reputation Viewer</title>
+    </head>
+    <body>
+        <div id="content">
+            Loading...
+        </div>
+        <script>
+            function show(txt) {
+                console.log(txt);
+                if (txt instanceof Error) {
+                    document.getElementById('content').innerHTML = 'Error: ' + txt.message;
+                } else if (typeof txt === 'string') {
+                    document.getElementById('content').innerHTML = txt;
+                } else if (typeof txt === 'object') {
+                    document.getElementById('content').innerHTML = '<pre><code>' + JSON.stringify(txt, undefined, 2) + '</code></pre>'
+                    hljs.highlightBlock(document.querySelector('#content pre code'));
+                }
+            }
+
+            function getAnchor() {
+                return window.location.hash.substr(1);
+            }
+        </script>
+
+        <!-- IPFS Stuff -->
+        <script src="https://unpkg.com/cids/dist/index.min.js"></script>
+        <script src="https://unpkg.com/ipfs@0.28.2/dist/index.min.js"></script>
+        <script src="https://unpkg.com/orbit-db@0.19.7/dist/orbitdb.min.js"></script>
+        <!-- End IPFS Stuff -->
+        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+
+        <script>
+            async function main() {
+                hljs.initHighlightingOnLoad();
+                await prepareIPFS();
+                window.db.events.on('replicated', refresh)
+                window.onhashchange = refresh;
+                return refresh()
+            }            
+
+            async function resolveDID(rep) {
+                if (rep.did && rep.did['/']) {
+                    rep.did = (await window.ipfs.dag.get(new Cids(rep.did['/']))).value
+                }
+                if (Array.isArray(rep.reviews)) {
+                    rep.reviews = rep.reviews.map(r => {
+                        if (r.did && r.did['/']) {
+                            r.did['/'] = (new Cids(r.did['/'])).toBaseEncodedString()
+                        }
+                        return r
+                    })
+                }
+                return rep;
+            }
+
+            async function refresh() {
+                try {
+                    const did = getAnchor();
+                    if (!did) {
+                        return show('Link invalid')
+                    }
+                    const reputationMultihash = await window.db.get(did);
+                    if (!reputationMultihash) {
+                        return show('Looking for the DID...')
+                    }
+                    show('Retrieving ' + reputationMultihash + ' from IPFS...')
+                    const reputationDag = await window.ipfs.dag.get(reputationMultihash)
+                    show('Resolving links for ' + reputationMultihash)
+                    const reputationResolved = await resolveDID(reputationDag.value);
+                    return show(reputationResolved);
+                } catch (error) {
+                    show(error);
+                }
+            }
+
+            main()
+                .catch(function(error) {
+                    show(error);
+                })
+
+
+            function prepareIPFS() {
+                if (window.ipfs && window.orbitDb && window.db) {
+                    return Promise.resolve();
+                } else {
+                    return new Promise(function(resolve){
+                        window.ipfs = new Ipfs({
+                            EXPERIMENTAL: {
+                                pubsub: true
+                            },
+                            config: {
+                                Addresses: {
+                                    Swarm: [
+                                        // Connect to Chlu rendezvous server
+                                        '/dns4/ren.chlu.io/tcp/443/wss/p2p-websocket-star'
+                                    ]
+                                }
+                            }
+                        });
+                        window.ipfs.on('ready', function(){ resolve(window.ipfs); });
+                    })
+                    .then(function(ipfs) {
+                        ipfs.pubsub.subscribe('chlu-reputation-experimental', function(message){
+                            console.log('Pubsub Message:', message);
+                        });
+                    })
+                    .then(function(){
+                        window.orbitDb = new OrbitDB(window.ipfs);
+                        return orbitDb.kvstore('chlu-reputation-experimental', {
+                            write: ['*']
+                        });
+                    })
+                    .then(function(db){
+                        window.db = db;
+                    });
+                }
+            }
+        </script>
+    </body>
+</html>
