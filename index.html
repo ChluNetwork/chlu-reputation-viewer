@@ -55,6 +55,9 @@
             async function resolveDID(rep) {
                 if (rep.did && rep.did['/']) {
                     rep.did = (await window.ipfs.dag.get(new Cids(rep.did['/']))).value
+                    if (rep.did && rep.did.data && rep.did.data.toString) {
+                        rep.did = JSON.parse(rep.did.data.toString())
+                    }
                 }
                 if (Array.isArray(rep.reviews)) {
                     rep.reviews = rep.reviews.map(r => {
@@ -79,8 +82,15 @@
                     }
                     show('Retrieving ' + reputationMultihash + ' from IPFS...')
                     const reputationDag = await window.ipfs.dag.get(reputationMultihash)
+                    console.log(reputationDag)
+                    let data = null
+                    if (reputationDag.value && reputationDag.value.data && reputationDag.value.data.toString) {
+                        data = JSON.parse(reputationDag.value.data.toString())
+                    } else {
+                        data = reputationDag.value
+                    }
                     show('Resolving links for ' + reputationMultihash)
-                    const reputationResolved = await resolveDID(reputationDag.value);
+                    const reputationResolved = await resolveDID(data);
                     return show(reputationResolved);
                 } catch (error) {
                     show(error);
