@@ -5,19 +5,29 @@
         <title>Chlu Reputation Viewer</title>
     </head>
     <body>
+        <a id="download" style="display:none">Download your Decentralized Reputation</a>
         <div id="content">
             Loading...
         </div>
         <script>
             function show(txt) {
                 console.log(txt);
+                const button = document.getElementById('download')
                 if (txt instanceof Error) {
                     document.getElementById('content').innerHTML = 'Error: ' + txt.message;
+                    button.style.display = 'none';
                 } else if (typeof txt === 'string') {
                     document.getElementById('content').innerHTML = txt;
+                    button.style.display = 'none';
                 } else if (typeof txt === 'object') {
-                    document.getElementById('content').innerHTML = '<pre><code>' + JSON.stringify(txt, undefined, 2) + '</code></pre>'
+                    const string = JSON.stringify(txt, undefined, 2)
+                    document.getElementById('content').innerHTML = '<pre><code>' + string + '</code></pre>'
                     hljs.highlightBlock(document.querySelector('#content pre code'));
+                    button.download = 'my_decentralized_reputation.json'
+                    button.href = "data:text/json;charset=utf-8," + encodeURIComponent(string);
+                    button.style.display = 'block';
+                } else {
+                    button.style.display = 'none';
                 }
             }
 
