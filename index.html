@@ -139,14 +139,9 @@
                         });
                         window.ipfs.on('ready', function(){ resolve(window.ipfs); });
                     })
-                    .then(function(ipfs) {
-                        ipfs.pubsub.subscribe('chlu-reputation-experimental', function(message){
-                            console.log('Pubsub Message:', message);
-                        });
-                    })
                     .then(function(){
                         window.orbitDb = new OrbitDB(window.ipfs);
-                        return orbitDb.kvstore('chlu-reputation-experimental', {
+                        return orbitDb.kvstore('chlu-reputation-experimental-2', {
                             write: ['*']
                         });
                     })
