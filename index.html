@@ -46,7 +46,10 @@
         <script>
             async function main() {
                 hljs.initHighlightingOnLoad();
+                show('Connecting to IPFS...')
                 await prepareIPFS();
+                show('Loading distributed DID database...')
+                await window.db.load()
                 window.db.events.on('replicated', refresh)
                 window.onhashchange = refresh;
                 return refresh()
