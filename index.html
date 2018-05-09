@@ -72,15 +72,31 @@
 
             async function refresh() {
                 try {
-                    const did = getAnchor();
-                    if (!did) {
+                    const url = getAnchor();
+                    console.log('url', url)
+                    let did
+                    if (!url) {
                         return show('Link invalid')
                     }
+                    if (url.indexOf('did:chlu:') === 0) {
+                        const didId = url.indexOf('#') > 0 ? url.slice(0, url.indexOf('#')) : url
+                        show('Resolving DID ID...')
+                        console.log('didId', didId)
+                        did = await window.db.get(didId)
+                        if (!did) {
+                            return
+                        }
+                        console.log('did addr', did)
+                    } else {
+                        did = url
+                    }
+                    show('Resolving Reputation')
                     const reputationMultihash = await window.db.get(did);
                     if (!reputationMultihash) {
-                        return show('Looking for the DID...')
+                        return
                     }
-                    show('Retrieving ' + reputationMultihash + ' from IPFS...')
+                    console.log('rep addr', reputationMultihash)
+                    show('Retrieving Reputation from IPFS...')
                     const reputationDag = await window.ipfs.dag.get(reputationMultihash)
                     console.log(reputationDag)
                     let data = null
@@ -89,7 +105,7 @@
                     } else {
                         data = reputationDag.value
                     }
-                    show('Resolving links for ' + reputationMultihash)
+                    show('Resolving links in Reputation')
                     const reputationResolved = await resolveDID(data);
                     return show(reputationResolved);
                 } catch (error) {
